@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+        padding: 16px;
+        background: var(--tg-theme-bg-color, #fff);
+        color: var(--tg-theme-text-color, #000);
+      }
+
+      h2 { margin-top: 0; }
+      .form-group { margin-bottom: 14px; }
+
+      label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
+
+      input, select {
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        box-sizing: border-box;
+      }
+
+      button[type="submit"] {
+        width: 100%;
+        padding: 12px;
+        margin-top: 4px;
+        background: var(--tg-theme-button-color, #2481cc);
+        color: var(--tg-theme-button-text-color, #fff);
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .error {
+        color: #d9534f;
+        margin-top: 10px;
+        display: none;
+      }
+
+      .thank-you-screen {
+        text-align: center;
+        padding: 32px 16px;
+        display: none;
+      }
+      .thank-you-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+      }
+      .thank-you-btn {
+        margin-top: 20px;
+        width: 100%;
+        padding: 12px;
+        background: var(--tg-theme-button-color, #2481cc);
+        color: var(--tg-theme-button-text-color, #fff);
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="form-screen">
+      <h2>Заявка на подключение</h2>
+      <p style="color: var(--tg-theme-hint-color, #888); font-size: 14px;">
+        Покажем реальные условия и первый слот без «обещаний 100к».
+      </p>
+
+      <form id="leadForm">
+        <div class="form-group">
+          <label>Имя</label>
+          <input type="text" name="name" required placeholder="Иван" />
+        </div>
+        <div class="form-group">
+          <label>Город</label>
+          <select name="city" required>
+            <option value="" disabled selected>Выбери город</option>
+            <option value="Москва">Москва</option>
+            <option value="Санкт-Петербург">Санкт-Петербург</option>
+            <option value="Казань">Казань</option>
+            <option value="Екатеринбург">Екатеринбург</option>
+            <option value="Другой">Другой</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Тип транспорта</label>
+          <select name="transport" required>
+            <option value="" disabled selected>Выбери вариант</option>
+            <option value="авто">Авто</option>
+            <option value="велосипед">Велосипед</option>
+            <option value="пешком">Пешком</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Готовность по времени</label>
+          <select name="time" required>
+            <option value="" disabled selected>Выбери вариант</option>
+            <option value="2-4 часа">2–4 часа (подработка)</option>
+            <option value="полный день">Полный день</option>
+            <option value="по выходным">По выходным</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Телефон</label>
+          <input type="tel" name="phone" placeholder="+7 (999) 000-00-00" />
+        </div>
+        <div class="form-group">
+          <label style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" name="agree" required />
+            Согласен на обработку персональных данных
+          </label>
+        </div>
+        <button type="submit" id="submitBtn">Отправить заявку</button>
+        <div id="error" class="error">Ошибка отправки. Попробуй ещё раз.</div>
+      </form>
+    </div>
+
+    <div id="thank-you-screen" class="thank-you-screen">
+      <div class="thank-you-icon">✅</div>
+      <h2>Спасибо за заявку!</h2>
+      <p>Мы получили твои данные. Скоро с тобой свяжутся.</p>
+      <button id="close-app-btn" class="thank-you-btn">Закрыть</button>
+    </div>
+
+    <script>
+      const tg = window.Telegram.WebApp;
+      tg.ready();
+
+      const form = document.getElementById('leadForm');
+      const btn = form ? form.querySelector('button[type="submit"]') : null;
+      const errorBlock = document.getElementById('error');
+      const formScreen = document.getElementById('form-screen');
+      const thankYouScreen = document.getElementById('thank-you-screen');
+      const closeBtn = document.getElementById('close-app-btn');
+
+      if (form) {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Отправка…';
+          }
+          if (errorBlock) {
+            errorBlock.style.display = 'none';
+            errorBlock.textContent = '';
+          }
+
+          try {
+            const formData = new FormData(form);
+            const data = {
+              name: formData.get('name'),
+              city: formData.get('city'),
+              transport: formData.get('transport'),
+              time: formData.get('time'),
+              phone: formData.get('phone'),
+              date: new Date().toISOString(),
+              user: tg.initDataUnsafe?.user || {}
+            };
+
+            const payload = JSON.stringify(data);
+
+            if (formScreen) formScreen.style.display = 'none';
+            if (thankYouScreen) thankYouScreen.style.display = 'block';
+
+            tg.sendData(payload);
+            console.log('Данные отправлены:', payload);
+
+          } catch (err) {
+            console.error('Ошибка отправки:', err);
+
+            if (errorBlock) {
+              errorBlock.textContent = 'Произошла ошибка: ' + err.message;
+              errorBlock.style.display = 'block';
+            }
+
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = 'Отправить заявку';
+            }
+            
+            if (formScreen) formScreen.style.display = 'block';
+            if (thankYouScreen) thankYouScreen.style.display = 'none';
+          }
+        });
+      } else {
+        console.error('Форма с id="leadForm" не найдена!');
+      }
+
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+          tg.close();
+        });
+      }
+
+      setTimeout(() => {
+        tg.close();
+      }, 5000);
+    </script>
+  </body>
+</html>
